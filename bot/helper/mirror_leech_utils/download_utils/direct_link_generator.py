@@ -810,91 +810,53 @@ def uploadee(url):
     return details'''
 
 
-# Size string -> bytes कन्वर्ट करने वाला फंक्शन
-def speed_string_to_bytes(size_str):
-    units = {"B": 1, "KB": 1024, "MB": 1024**2, "GB": 1024**3}
-    size_str = str(size_str).strip().upper()
-    number = ""
-    unit = ""
-    for c in size_str:
-        if c.isdigit() or c == ".":
-            number += c
-        elif c.isalpha():
-            unit += c
-    try:
-        return int(float(number) * units.get(unit, 1))
-    except:
-        return 0
-
-# Main function
-def terabox(url, user_agent):
+def terabox(url):
     if "/file/" in url:
-        filename = url.split("/")[-1]
-        return {
-            "contents": [{
-                "path": "",
-                "filename": filename,
-                "url": url
-            }],
-            "title": filename,
-            "total_size": 0
-        }
-
-    # नया API URL
+        return url
+    
+    # New API URL
     new_api_url = f"https://render-api-1-t692.onrender.com/fetch?url={quote(url)}"
-
+    
     try:
         with Session() as session:
             req = session.get(new_api_url, headers={"User-Agent": user_agent}).json()
-            # Debug print (Deploy में हटा सकते हैं)
-            print("API Response:", req)
+
     except Exception as e:
         raise DirectDownloadLinkException(f"ERROR: {e.__class__.__name__}") from e
 
     details = {"contents": [], "title": "", "total_size": 0}
 
-    # पुराना API फॉर्मेट
-    if "✅ Status" in req and "📜 Extracted Info" in req:
+    # Check which API response format you have
+    if "✅ Status" in req: # Old API format
         for data in req["📜 Extracted Info"]:
             item = {
                 "path": "",
-                "filename": data.get("📂 Title", "file"),
-                "url": data.get("🔽 Direct Download Link", url),
+                "filename": data["📂 Title"],
+                "url": data["🔽 Direct Download Link"],
             }
             details["contents"].append(item)
-            size = str(data.get("📏 Size", "0")).replace(" ", "")
-            details["total_size"] += speed_string_to_bytes(size)
-        details["title"] = req["📜 Extracted Info"][0].get("📂 Title", "file")
+            size = (data["📏 Size"]).replace(" ", "")
+            size = speed_string_to_bytes(size) 
+            details["total_size"] += size
+        details["title"] = req["📜 Extracted Info"][0]["📂 Title"]
 
-    # नया API फॉर्मेट
-    elif req.get("proxy_url"):
-        file_name = req.get("file_name") or "file"
-        proxy_url = req.get("proxy_url")
-        file_size_str = req.get("file_size", "")
-        size_bytes = req.get("size_bytes")
-
-        if not size_bytes and file_size_str:
-            size_bytes = speed_string_to_bytes(file_size_str)
-
+    elif "proxy_url" in req: # New API format
         item = {
             "path": "",
-            "filename": file_name,
-            "url": proxy_url
+            "filename": req["file_name"],
+            "url": req["proxy_url"],  # <--- Change made here
         }
         details["contents"].append(item)
-        details["title"] = file_name
-        details["total_size"] = size_bytes if size_bytes else 0
+        size = (req["file_size"]).replace(" ", "")
+        size = speed_string_to_bytes(size) 
+        details["total_size"] += size
+        details["title"] = req["file_name"]
 
     else:
-        # Debug के लिए raw response भी उठाएं
-        raise DirectDownloadLinkException(
-            f"ERROR: File not found or unsupported API response format! Raw: {req}"
-        )
+        raise DirectDownloadLinkException("ERROR: File not found or unsupported API response format!")
 
-    # अगर केवल एक ही फाइल है तो सिर्फ URL रिटर्न करें जैसे पुराने कोड में था
     if len(details["contents"]) == 1:
         return details["contents"][0]["url"]
-
     return details
 
 
