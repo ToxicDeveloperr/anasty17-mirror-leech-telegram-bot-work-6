@@ -13,9 +13,9 @@ class TeraboxConfig:
     # Replace these with your actual channel IDs
     # To get channel ID: Forward a message from the channel to @userinfobot
     
-    SOURCE_CHANNEL_ID = -1001234567890      # Source channel where terabox links are posted
-    DESTINATION_CHANNEL_ID = -1001234567891 # Destination channel where files will be uploaded
-    DETAILS_CHANNEL_ID = -1001234567892     # Details channel for tracking and logging
+    SOURCE_CHANNEL_ID = -1002487065354      # Source channel where terabox links are posted
+    DESTINATION_CHANNEL_ID = -1002176533426 # Destination channel where files will be uploaded
+    DETAILS_CHANNEL_ID = -1002271035070     # Details channel for tracking and logging
     
     # ===== BOT CREDENTIALS =====
     # Get these from your existing config.py or from @BotFather and my.telegram.org
