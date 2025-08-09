@@ -814,50 +814,51 @@ def terabox(url):
     if "/file/" in url:
         return url
     
-    # New API URL
     new_api_url = f"https://render-api-1-t692.onrender.com/fetch?url={quote(url)}"
     
     try:
         with Session() as session:
             req = session.get(new_api_url, headers={"User-Agent": user_agent}).json()
-
     except Exception as e:
         raise DirectDownloadLinkException(f"ERROR: {e.__class__.__name__}") from e
 
     details = {"contents": [], "title": "", "total_size": 0}
 
-    # Check which API response format you have
-    if "✅ Status" in req: # Old API format
+    # Old API format
+    if "✅ Status" in req:
         for data in req["📜 Extracted Info"]:
+            size_val = data["📏 Size"]
+            if isinstance(size_val, str):
+                size_val = size_val.replace(" ", "")
             item = {
                 "path": "",
                 "filename": data["📂 Title"],
                 "url": data["🔽 Direct Download Link"],
             }
             details["contents"].append(item)
-            size = (data["📏 Size"]).replace(" ", "")
-            size = speed_string_to_bytes(size) 
-            details["total_size"] += size
+            details["total_size"] += speed_string_to_bytes(size_val)
         details["title"] = req["📜 Extracted Info"][0]["📂 Title"]
 
-    elif "proxy_url" in req: # New API format
+    # New API format
+    elif "proxy_url" in req:
+        size_val = req["file_size"]
+        if isinstance(size_val, str):
+            size_val = size_val.replace(" ", "")
         item = {
             "path": "",
             "filename": req["file_name"],
-            "url": req["proxy_url"],  # <--- Change made here
+            "url": req["proxy_url"],
         }
         details["contents"].append(item)
-        size = (req["file_size"]).replace(" ", "")
-        size = speed_string_to_bytes(size) 
-        details["total_size"] += size
+        details["total_size"] += speed_string_to_bytes(size_val)
         details["title"] = req["file_name"]
 
     else:
-        raise DirectDownloadLinkException("ERROR: File not found or unsupported API response format!")
+        raise DirectDownloadLinkException(
+            "ERROR: File not found or unsupported API response format!"
+        )
 
-    if len(details["contents"]) == 1:
-        return details["contents"][0]["url"]
-    return details
+    return details["contents"][0]["url"] if len(details["contents"]) == 1 else details
 
 
 def filepress(url):
